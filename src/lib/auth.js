@@ -1,8 +1,6 @@
-﻿import NextAuth from "next-auth";
-import DiscordProvider from "next-auth/providers/discord";
+﻿import DiscordProvider from "next-auth/providers/discord";
 
 export const authOptions = {
-  trustHost: true,
   session: { strategy: "jwt" },
   providers: [
     DiscordProvider({
@@ -12,17 +10,18 @@ export const authOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, profile, account }) {
+    async jwt({ token, account, profile }) {
+      // Persist Discord user id in the token
       if (account?.provider === "discord" && profile?.id) {
         token.discordId = profile.id;
       }
       return token;
     },
     async session({ session, token }) {
+      // Copy discordId into the session (server-side + client-side)
+      if (!session.user) session.user = {};
       session.user.discordId = token.discordId || null;
       return session;
     },
   },
 };
-
-export const { handlers, auth } = NextAuth(authOptions);
