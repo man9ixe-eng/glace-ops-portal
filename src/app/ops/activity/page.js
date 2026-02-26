@@ -1,11 +1,11 @@
-﻿export const dynamic = "force-dynamic";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const runtime = "nodejs";
 
-import { auth } from "@/lib/auth";
-
 export default async function ActivityPage() {
-  const session = await auth();
+  const session = await getServerSession(authOptions);
   const discordId = session?.user?.discordId;
 
   if (!discordId) {

@@ -1,7 +1,7 @@
-﻿import { auth } from "@/lib/auth";
-
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 export default async function SignInPage() {
-  const session = await auth();
+  const session = await getServerSession(authOptions);
   const discordLinked = Boolean(session?.user?.discordId);
   const robloxLinked = Boolean(session?.user?.robloxUserId);
 

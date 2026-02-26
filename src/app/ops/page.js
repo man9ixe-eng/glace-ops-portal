@@ -1,8 +1,9 @@
-﻿export const dynamic = "force-dynamic";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const runtime = "nodejs";
 
-import { auth } from "@/lib/auth";
 import { fetchGlaceRoles } from "@/lib/bridge";
 
 const TIER_LABEL = {
@@ -15,7 +16,7 @@ const TIER_LABEL = {
 };
 
 export default async function OpsPage() {
-  const session = await auth();
+  const session = await getServerSession(authOptions);
   const discordId = session?.user?.discordId;
 
   if (!discordId) {
