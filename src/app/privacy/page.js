@@ -4,7 +4,8 @@ export default function PrivacyPage() {
       <h1 className="text-3xl font-semibold mb-4">Privacy Policy</h1>
       <p className="text-white/80">
         Glace Ops Portal is an internal staff tool for Glace Hotels.
-        We access Discord and Roblox identifiers only for verification and operational features.
+        We access Discord and Roblox account identifiers only for verification and operational features.
+        We do not sell personal data.
       </p>
     </main>
   );
