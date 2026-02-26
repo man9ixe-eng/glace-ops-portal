@@ -1,29 +1,19 @@
-import { getServerSession } from "next-auth";
+import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
+
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
-export const runtime = "nodejs";
 
-export default async function ActivityPage() {
+export default async function OpsActivityPage() {
   const session = await getServerSession(authOptions);
-  const discordId = session?.user?.discordId;
 
-  if (!discordId) {
-    return (
-      <main className="min-h-screen bg-neutral-950 text-white p-6">
-        <p>Not signed in.</p>
-      </main>
-    );
-  }
+  if (!session) redirect("/sign-in");
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-white p-6">
+    <main className="min-h-screen bg-neutral-950 text-white p-8">
       <h1 className="text-2xl font-semibold">Activity</h1>
-      <p className="mt-2 text-white/70 text-sm">
-        Connected Discord ID: {discordId}
-      </p>
-      <p className="mt-4 text-white/50 text-sm">
-        Next: pull weekly minutes/sessions + discipline totals once Roblox + Discord log ingestion is wired.
+      <p className="mt-2 text-white/70">
+        Signed in.
       </p>
     </main>
   );
