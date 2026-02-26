@@ -2,8 +2,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 export default async function SignInPage() {
   const session = await getServerSession(authOptions);
-  const discordLinked = Boolean(session?.user?.discordId);
-  const robloxLinked = Boolean(session?.user?.robloxUserId);
+  const discordlinked!
+  const robloxlinked!
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-neutral-950 text-white p-6">
@@ -16,25 +16,25 @@ export default async function SignInPage() {
         <div className="mt-6 space-y-3">
           <a
             className={`block w-full rounded-xl px-4 py-3 text-center font-semibold hover:opacity-90 ${
-              discordLinked ? "bg-emerald-200 text-black" : "bg-white text-black"
+              discordlinked!
             }`}
             href="/api/auth/signin/discord?callbackUrl=/sign-in"
           >
-            {discordLinked ? "Discord linked Ã¢Å“â€¦" : "Link Discord"}
+            {discordlinked!
           </a>
 
           <a
             className={`block w-full rounded-xl px-4 py-3 text-center font-semibold hover:opacity-90 ${
-              robloxLinked ? "bg-emerald-200 text-black" : "bg-white text-black"
+              robloxlinked!
             }`}
             href="/api/auth/signin/roblox?callbackUrl=/sign-in"
           >
-            {robloxLinked ? "Roblox linked Ã¢Å“â€¦" : "Link Roblox"}
+            {robloxlinked!
           </a>
 
           <a
             className={`block w-full rounded-xl px-4 py-3 text-center font-semibold ${
-              discordLinked && robloxLinked
+              discordlinked!
                 ? "bg-sky-300 text-black hover:opacity-90"
                 : "bg-white/10 text-white/40 pointer-events-none"
             }`}
