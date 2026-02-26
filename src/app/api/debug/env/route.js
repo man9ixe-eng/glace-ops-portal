@@ -14,5 +14,6 @@ export async function GET() {
     DISCORD_CLIENT_SECRET: present(process.env.DISCORD_CLIENT_SECRET),
     ROBLOX_CLIENT_ID: present(process.env.ROBLOX_CLIENT_ID),
     ROBLOX_CLIENT_SECRET: present(process.env.ROBLOX_CLIENT_SECRET),
+    DATABASE_URL: present(process.env.DATABASE_URL),
   });
 }

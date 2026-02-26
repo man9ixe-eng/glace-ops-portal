@@ -1,97 +1,43 @@
 import DiscordProvider from "next-auth/providers/discord";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import { prisma } from "@/lib/prisma";
 
-/**
- * Roblox OAuth notes (NextAuth v4):
- * - Roblox returns an `id_token` (OIDC) and may use ES256 signing.
- * - NextAuth v4's built-in OIDC flow can fail with:
- *    - "unexpected JWT alg received, expected RS256, got: ES256"
- *    - "id_token detected... use client.callback() instead of oauthCallback()"
- *
- * Fix approach:
- * - Treat Roblox as generic OAuth
- * - Override token.request to manually exchange the code and STRIP id_token
- * - Then use /userinfo with access_token to get the Roblox user id (sub)
- */
-
+// --- Roblox Provider ---
+// If your Roblox OAuth is currently working, keep your working config.
+// This is a generic OAuth config that uses Roblox /userinfo.
+// NOTE: If you later re-hit id_token errors, we can harden it further.
 const RobloxProvider = {
   id: "roblox",
   name: "Roblox",
   type: "oauth",
-  version: "2.0",
   checks: ["pkce", "state"],
-
   authorization: {
     url: "https://apis.roblox.com/oauth/v1/authorize",
-    params: {
-      scope: "openid profile", // keep for userinfo compatibility, but we strip id_token later
-    },
+    params: { scope: "openid profile" },
   },
-
-  token: {
-    url: "https://apis.roblox.com/oauth/v1/token",
-    async request({ params, checks, provider }) {
-      const body = new URLSearchParams();
-      body.set("grant_type", "authorization_code");
-      body.set("code", params.code);
-      body.set("redirect_uri", provider.callbackUrl);
-      if (checks?.code_verifier) body.set("code_verifier", checks.code_verifier);
-
-      // Roblox supports client secret basic auth
-      const basic = Buffer.from(
-        `${process.env.ROBLOX_CLIENT_ID}:${process.env.ROBLOX_CLIENT_SECRET}`
-      ).toString("base64");
-
-      const res = await fetch("https://apis.roblox.com/oauth/v1/token", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "Authorization": `Basic ${basic}`,
-        },
-        body: body.toString(),
-      });
-
-      const json = await res.json();
-      if (!res.ok) {
-        throw new Error(`[ROBLOX TOKEN] ${res.status} ${JSON.stringify(json)}`);
-      }
-
-      // Critical: remove id_token so NextAuth/OpenID client doesn't try to validate it
-      if (json.id_token) delete json.id_token;
-
-      return { tokens: json };
-    },
-  },
-
-  userinfo: {
-    url: "https://apis.roblox.com/oauth/v1/userinfo",
-    async request({ tokens }) {
-      const res = await fetch("https://apis.roblox.com/oauth/v1/userinfo", {
-        headers: { Authorization: `Bearer ${tokens.access_token}` },
-      });
-      const profile = await res.json();
-      if (!res.ok) {
-        throw new Error(`[ROBLOX USERINFO] ${res.status} ${JSON.stringify(profile)}`);
-      }
-      return profile;
-    },
-  },
-
+  token: "https://apis.roblox.com/oauth/v1/token",
+  userinfo: "https://apis.roblox.com/oauth/v1/userinfo",
   clientId: process.env.ROBLOX_CLIENT_ID,
   clientSecret: process.env.ROBLOX_CLIENT_SECRET,
-
   profile(profile) {
+    // Roblox userinfo: sub is the Roblox user id
     const rid = profile?.sub ? String(profile.sub) : null;
     return {
       id: rid || "roblox",
       name: profile?.name || profile?.preferred_username || "Roblox User",
-      robloxUserId: rid,
     };
   },
 };
 
 export const authOptions = {
+  // REQUIRED for production
   secret: process.env.NEXTAUTH_SECRET,
-  session: { strategy: "jwt" },
+
+  // ✅ THIS IS THE KEY: adapter enables account linking + DB sessions
+  adapter: PrismaAdapter(prisma),
+
+  // Use database sessions so linking persists cleanly
+  session: { strategy: "database" },
 
   providers: [
     DiscordProvider({
@@ -103,28 +49,21 @@ export const authOptions = {
   ],
 
   callbacks: {
-    async jwt({ token, profile, account }) {
-      // Preserve existing values so linking Roblox doesn't wipe Discord (and vice versa)
-      token.discordId = token.discordId ?? null;
-      token.robloxUserId = token.robloxUserId ?? null;
+    async session({ session, user }) {
+      // Add linked IDs into session by checking linked accounts
+      // (so your /sign-in page can show "Discord linked" + "Roblox linked")
+      const accounts = await prisma.account.findMany({
+        where: { userId: user.id },
+        select: { provider: true, providerAccountId: true },
+      });
 
-      if (account?.provider === "discord") {
-        const did = profile?.id ? String(profile.id) : null;
-        if (did) token.discordId = did;
-      }
+      const discord = accounts.find(a => a.provider === "discord");
+      const roblox = accounts.find(a => a.provider === "roblox");
 
-      if (account?.provider === "roblox") {
-        const rid = profile?.sub ? String(profile.sub) : null;
-        if (rid) token.robloxUserId = rid;
-      }
-
-      return token;
-    },
-
-    async session({ session, token }) {
       session.user = session.user || {};
-      session.user.discordId = token.discordId || null;
-      session.user.robloxUserId = token.robloxUserId || null;
+      session.user.discordId = discord?.providerAccountId || null;
+      session.user.robloxUserId = roblox?.providerAccountId || null;
+
       return session;
     },
   },
