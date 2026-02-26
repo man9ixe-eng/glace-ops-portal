@@ -1,40 +1,28 @@
 import DiscordProvider from "next-auth/providers/discord";
 
-// Roblox OAuth (NOT OpenID) - avoids id_token alg issues (ES256 vs RS256)
 const RobloxProvider = {
   id: "roblox",
   name: "Roblox",
   type: "oauth",
   checks: ["pkce", "state"],
 
-  // IMPORTANT: Do NOT request "openid" to prevent NextAuth expecting/validating id_token
+  // Roblox OIDC discovery (so NextAuth/openid-client knows jwks + algs)
+  wellKnown: "https://apis.roblox.com/oauth/.well-known/openid-configuration",
+
   authorization: {
-    url: "https://apis.roblox.com/oauth/v1/authorize",
-    params: { scope: "profile" },
-  },
-
-  token: "https://apis.roblox.com/oauth/v1/token",
-
-  // Tell NextAuth NOT to use/verify id_token
-  idToken: false,
-
-  // Fetch Roblox identity using the access token
-  userinfo: {
-    url: "https://apis.roblox.com/oauth/v1/userinfo",
-    async request({ tokens, provider }) {
-      const res = await fetch(provider.userinfo.url, {
-        headers: { Authorization: `Bearer ${tokens.access_token}` },
-      });
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        throw new Error(`Roblox userinfo failed: ${res.status} ${txt}`);
-      }
-      return await res.json();
+    params: {
+      scope: "openid profile",
     },
   },
 
+  idToken: true,
   clientId: process.env.ROBLOX_CLIENT_ID,
   clientSecret: process.env.ROBLOX_CLIENT_SECRET,
+
+  // Force ES256 because Roblox ID tokens are ES256 in your logs
+  client: {
+    id_token_signed_response_alg: "ES256",
+  },
 
   profile(profile) {
     const id = profile?.sub ? String(profile.sub) : null;

@@ -20,7 +20,7 @@ export default async function SignInPage() {
             }`}
             href="/api/auth/signin/discord?callbackUrl=/sign-in"
           >
-            {discordLinked ? "Discord linked ✅" : "Link Discord"}
+            {discordLinked ? "Discord linked Ã¢Å“â€¦" : "Link Discord"}
           </a>
 
           <a
@@ -29,7 +29,7 @@ export default async function SignInPage() {
             }`}
             href="/api/auth/signin/roblox?callbackUrl=/sign-in"
           >
-            {robloxLinked ? "Roblox linked ✅" : "Link Roblox"}
+            {robloxLinked ? "Roblox linked Ã¢Å“â€¦" : "Link Roblox"}
           </a>
 
           <a

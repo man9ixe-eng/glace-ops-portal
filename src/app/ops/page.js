@@ -35,7 +35,7 @@ export default async function OpsPage() {
       <main className="min-h-screen bg-neutral-950 text-white p-6">
         <h1 className="text-2xl font-semibold">Access blocked</h1>
         <p className="mt-2 text-white/70">
-          We couldn’t verify your Glace roles. You may not be in the server, or the bridge is unavailable.
+          We couldnÃ¢â‚¬â„¢t verify your Glace roles. You may not be in the server, or the bridge is unavailable.
         </p>
         <p className="mt-2 text-white/50 text-sm">Reason: {String(e?.message || e)}</p>
         <a className="underline mt-4 inline-block" href="/api/auth/signout">Sign out</a>
