@@ -1,5 +1,6 @@
 ﻿import NextAuth from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
+import { getServerSession } from "next-auth/next";
 
 const RobloxProvider = {
   id: "roblox",
@@ -15,7 +16,6 @@ const RobloxProvider = {
   clientId: process.env.ROBLOX_CLIENT_ID,
   clientSecret: process.env.ROBLOX_CLIENT_SECRET,
   profile(profile) {
-    // Roblox userinfo commonly returns: { sub: "USER_ID", name: "...", ... }
     const id = profile?.sub ? String(profile.sub) : null;
     return {
       id: id || "roblox",
@@ -55,4 +55,12 @@ export const authOptions = {
   },
 };
 
-export const { handlers, auth } = NextAuth(authOptions);
+// ✅ Route handler factory (v4 style)
+export function nextAuthHandler() {
+  return NextAuth(authOptions);
+}
+
+// ✅ Server-side session helper used by app pages
+export async function auth() {
+  return getServerSession(authOptions);
+}
