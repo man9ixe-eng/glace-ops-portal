@@ -1,20 +1,30 @@
-﻿import { auth } from "@/lib/auth";
+﻿export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const runtime = "nodejs";
+
+import { auth } from "@/lib/auth";
 
 export default async function ActivityPage() {
   const session = await auth();
+  const discordId = session?.user?.discordId;
 
-  if (!session) return <div>Not signed in.</div>;
+  if (!discordId) {
+    return (
+      <main className="min-h-screen bg-neutral-950 text-white p-6">
+        <p>Not signed in.</p>
+      </main>
+    );
+  }
 
   return (
-    <div>
-      <h1 className="text-2xl font-semibold">Your Activity</h1>
-      <p className="text-sm text-white/60">
-        Weekly stats reset every Monday.
+    <main className="min-h-screen bg-neutral-950 text-white p-6">
+      <h1 className="text-2xl font-semibold">Activity</h1>
+      <p className="mt-2 text-white/70 text-sm">
+        Connected Discord ID: {discordId}
       </p>
-
-      <div className="mt-6 rounded-xl bg-[#0e1628] border border-white/10 p-6">
-        <p className="text-white/70">Detailed logs coming next.</p>
-      </div>
-    </div>
+      <p className="mt-4 text-white/50 text-sm">
+        Next: pull weekly minutes/sessions + discipline totals once Roblox + Discord log ingestion is wired.
+      </p>
+    </main>
   );
 }
