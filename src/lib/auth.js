@@ -1,5 +1,29 @@
-﻿import DiscordProvider from "next-auth/providers/discord";
-import { getServerSession } from "next-auth";
+﻿import NextAuth from "next-auth";
+import DiscordProvider from "next-auth/providers/discord";
+
+const RobloxProvider = {
+  id: "roblox",
+  name: "Roblox",
+  type: "oauth",
+  checks: ["pkce", "state"],
+  authorization: {
+    url: "https://apis.roblox.com/oauth/v1/authorize",
+    params: { scope: "openid profile" },
+  },
+  token: "https://apis.roblox.com/oauth/v1/token",
+  userinfo: "https://apis.roblox.com/oauth/v1/userinfo",
+  clientId: process.env.ROBLOX_CLIENT_ID,
+  clientSecret: process.env.ROBLOX_CLIENT_SECRET,
+  profile(profile) {
+    // Roblox userinfo commonly returns: { sub: "USER_ID", name: "...", ... }
+    const id = profile?.sub ? String(profile.sub) : null;
+    return {
+      id: id || "roblox",
+      name: profile?.name || profile?.preferred_username || "Roblox User",
+      robloxUserId: id,
+    };
+  },
+};
 
 export const authOptions = {
   trustHost: true,
@@ -10,22 +34,25 @@ export const authOptions = {
       clientSecret: process.env.DISCORD_CLIENT_SECRET,
       authorization: { params: { scope: "identify" } },
     }),
+    RobloxProvider,
   ],
   callbacks: {
     async jwt({ token, profile, account }) {
       if (account?.provider === "discord" && profile?.id) {
-        token.discordId = profile.id;
+        token.discordId = String(profile.id);
+      }
+      if (account?.provider === "roblox") {
+        const rid = profile?.sub ? String(profile.sub) : null;
+        if (rid) token.robloxUserId = rid;
       }
       return token;
     },
     async session({ session, token }) {
-      session.user = session.user || {};
       session.user.discordId = token.discordId || null;
+      session.user.robloxUserId = token.robloxUserId || null;
       return session;
     },
   },
 };
 
-export async function auth() {
-  return getServerSession(authOptions);
-}
+export const { handlers, auth } = NextAuth(authOptions);
