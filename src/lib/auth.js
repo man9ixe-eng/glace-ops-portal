@@ -13,7 +13,7 @@ const RobloxProvider = {
   checks: ["pkce", "state"],
   authorization: {
     url: "https://apis.roblox.com/oauth/v1/authorize",
-    params: { scope: "openid profile" },
+    params: { scope: "profile" },
   },
   token: "https://apis.roblox.com/oauth/v1/token",
   userinfo: "https://apis.roblox.com/oauth/v1/userinfo",
@@ -33,7 +33,7 @@ export const authOptions = {
   // REQUIRED for production
   secret: process.env.NEXTAUTH_SECRET,
 
-  // ✅ THIS IS THE KEY: adapter enables account linking + DB sessions
+  // âœ… THIS IS THE KEY: adapter enables account linking + DB sessions
   adapter: PrismaAdapter(prisma),
 
   // Use database sessions so linking persists cleanly
@@ -43,7 +43,7 @@ export const authOptions = {
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID,
       clientSecret: process.env.DISCORD_CLIENT_SECRET,
-      authorization: { params: { scope: "identify" } },
+      authorization: { params: { scope: "profile" } },
     }),
     RobloxProvider,
   ],
