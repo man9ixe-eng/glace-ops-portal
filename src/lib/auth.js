@@ -1,34 +1,18 @@
 import DiscordProvider from "next-auth/providers/discord";
 
-/**
- * Roblox OAuth / OIDC
- * - We use the official OpenID configuration endpoint
- * - Force ES256 for the id_token signing alg (Roblox can use ES256)
- * - Keep PKCE + state
- *
- * NOTE:
- * If your Render / env ROBLOX_CLIENT_ID or ROBLOX_CLIENT_SECRET are empty,
- * Roblox will not appear in /api/auth/providers.
- */
+// Roblox OAuth/OIDC
+// Roblox returns id_token + uses ES256 in some cases.
+// NextAuth v4 works best by treating Roblox as OIDC with discovery.
 const RobloxProvider = {
   id: "roblox",
   name: "Roblox",
   type: "oidc",
   wellKnown: "https://apis.roblox.com/oauth/.well-known/openid-configuration",
-  checks: ["pkce", "state"],
+  clientId: process.env.ROBLOX_CLIENT_ID,
+  clientSecret: process.env.ROBLOX_CLIENT_SECRET,
   authorization: {
     params: { scope: "openid profile" },
   },
-  clientId: process.env.ROBLOX_CLIENT_ID,
-  clientSecret: process.env.ROBLOX_CLIENT_SECRET,
-
-  // Important for Roblox token exchange in many setups:
-  // (If yours works without it, it still doesn't hurt.)
-  client: {
-    token_endpoint_auth_method: "client_secret_post",
-    id_token_signed_response_alg: "ES256",
-  },
-
   profile(profile) {
     const rid = profile?.sub ? String(profile.sub) : null;
     return {
@@ -42,12 +26,6 @@ const RobloxProvider = {
 export const authOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   session: { strategy: "jwt" },
-
-  // KEY FIX: Never show the default /api/auth/signin page
-  pages: {
-    signIn: "/sign-in",
-  },
-
   providers: [
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID,
@@ -56,10 +34,9 @@ export const authOptions = {
     }),
     RobloxProvider,
   ],
-
   callbacks: {
     async jwt({ token, profile, account }) {
-      // KEY FIX: preserve BOTH ids (linking one must not wipe the other)
+      // ✅ Preserve values so linking Roblox doesn't wipe Discord and vice versa
       token.discordId = token.discordId ?? null;
       token.robloxUserId = token.robloxUserId ?? null;
 
@@ -75,7 +52,6 @@ export const authOptions = {
 
       return token;
     },
-
     async session({ session, token }) {
       session.user = session.user || {};
       session.user.discordId = token.discordId || null;
