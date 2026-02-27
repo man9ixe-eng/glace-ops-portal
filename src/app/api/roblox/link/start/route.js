@@ -1,7 +1,6 @@
 ﻿import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { getPublicBaseUrl } from "@/lib/publicUrl";
 
 export const dynamic = "force-dynamic";
@@ -23,9 +22,23 @@ export async function GET(req) {
   const url = new URL(req.url);
   const callbackUrl = url.searchParams.get("callbackUrl") || "/sign-in";
 
-  // Require Discord session first (we link Roblox onto that user)
-  const session = await getServerSession(authOptions);
-  if (!session) {
+  // ✅ RELIABLE auth check for App Router route handlers:
+  // Check DB session token cookie instead of getServerSession()
+  const sessionToken =
+    req.cookies.get("next-auth.session-token")?.value ||
+    req.cookies.get("__Secure-next-auth.session-token")?.value ||
+    null;
+
+  if (!sessionToken) {
+    return NextResponse.redirect(`${base}/sign-in?callbackUrl=${encodeURIComponent(callbackUrl)}`, 307);
+  }
+
+  const dbSession = await prisma.session.findUnique({
+    where: { sessionToken },
+    select: { userId: true },
+  });
+
+  if (!dbSession?.userId) {
     return NextResponse.redirect(`${base}/sign-in?callbackUrl=${encodeURIComponent(callbackUrl)}`, 307);
   }
 
@@ -43,13 +56,12 @@ export async function GET(req) {
 
   const redirectUri = `${base}/api/roblox/link/callback`;
 
-  // Roblox authorize URL (use apis.roblox.com)
   const auth = new URL("https://apis.roblox.com/oauth/v1/authorize");
   auth.searchParams.set("client_id", clientId);
   auth.searchParams.set("response_type", "code");
   auth.searchParams.set("redirect_uri", redirectUri);
 
-  // IMPORTANT: Roblox rejects profile:read; use openid + profile
+  // ✅ Roblox scopes (NOT profile:read)
   auth.searchParams.set("scope", "openid profile");
 
   auth.searchParams.set("state", state);
