@@ -2,9 +2,8 @@ import DiscordProvider from "next-auth/providers/discord";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 
-// Roblox OAuth
-// IMPORTANT: Roblox basic identity scopes are "openid profile" (NOT profile:read).
-// If your Roblox app category/policy blocks some scopes, fix it in Roblox Creator Dashboard.
+// Roblox OAuth / OIDC
+// FIX: Roblox id_token is ES256 (not RS256). Tell openid-client to accept ES256.
 const RobloxProvider = {
   id: "roblox",
   name: "Roblox",
@@ -18,8 +17,13 @@ const RobloxProvider = {
   userinfo: "https://apis.roblox.com/oauth/v1/userinfo",
   clientId: process.env.ROBLOX_CLIENT_ID,
   clientSecret: process.env.ROBLOX_CLIENT_SECRET,
+
+  // ✅ THIS LINE FIXES YOUR ERROR:
+  client: {
+    id_token_signed_response_alg: "ES256",
+  },
+
   profile(profile) {
-    // Roblox userinfo: sub is the Roblox user id
     const rid = profile?.sub ? String(profile.sub) : null;
     return {
       id: rid || "roblox",
@@ -31,10 +35,7 @@ const RobloxProvider = {
 export const authOptions = {
   secret: process.env.NEXTAUTH_SECRET,
 
-  // ✅ Makes provider linking persistent
   adapter: PrismaAdapter(prisma),
-
-  // ✅ Use DB sessions (recommended when using adapter)
   session: { strategy: "database" },
 
   providers: [
@@ -48,7 +49,6 @@ export const authOptions = {
 
   callbacks: {
     async session({ session, user }) {
-      // expose linked ids to UI
       const accounts = await prisma.account.findMany({
         where: { userId: user.id },
         select: { provider: true, providerAccountId: true },
