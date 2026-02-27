@@ -14,7 +14,7 @@ export default function SignInClient({ discordLinked, robloxLinked }) {
         <button
           onClick={() => signIn("discord", { callbackUrl: "/sign-in" })}
           disabled={discordLinked}
-          style={{ width: "100%", padding: 12, marginTop: 10, opacity: discordLinked ? 0.6 : 1 }}
+          style={{ width: "100%", padding: 12, marginTop: 10, borderRadius: 10 }}
         >
           {discordLinked ? "Discord linked" : "Link Discord"}
         </button>
@@ -22,7 +22,7 @@ export default function SignInClient({ discordLinked, robloxLinked }) {
         {robloxLinked ? (
           <button
             disabled
-            style={{ width: "100%", padding: 12, marginTop: 10, opacity: 0.6 }}
+            style={{ width: "100%", padding: 12, marginTop: 10, borderRadius: 10, opacity: 0.6 }}
           >
             Roblox linked
           </button>
@@ -34,11 +34,12 @@ export default function SignInClient({ discordLinked, robloxLinked }) {
               width: "100%",
               padding: 12,
               marginTop: 10,
+              borderRadius: 10,
+              background: "#fff",
+              color: "#000",
               textAlign: "center",
-              background: "#222",
-              borderRadius: 8,
-              color: "#fff",
               textDecoration: "none",
+              fontWeight: 600,
             }}
           >
             Link Roblox
@@ -48,15 +49,12 @@ export default function SignInClient({ discordLinked, robloxLinked }) {
         <button
           disabled={!canContinue}
           onClick={() => (window.location.href = "/ops")}
-          style={{ width: "100%", padding: 12, marginTop: 14, opacity: canContinue ? 1 : 0.5 }}
+          style={{ width: "100%", padding: 12, marginTop: 14, borderRadius: 10, opacity: canContinue ? 1 : 0.5 }}
         >
           Continue to Ops
         </button>
 
-        <a
-          href="/api/auth/signout?callbackUrl=%2Fsign-in"
-          style={{ display: "block", marginTop: 14, color: "#bbb" }}
-        >
+        <a href="/api/auth/signout?callbackUrl=%2Fsign-in" style={{ display: "block", marginTop: 14, color: "#bbb" }}>
           Sign out
         </a>
       </div>
