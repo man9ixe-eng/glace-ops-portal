@@ -2,8 +2,13 @@ import DiscordProvider from "next-auth/providers/discord";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 
-// Roblox OAuth / OIDC
-// FIX: Roblox id_token is ES256 (not RS256). Tell openid-client to accept ES256.
+function env(name) {
+  const v = process.env[name];
+  if (!v) throw new Error(`[AUTH] Missing env var: ${name}`);
+  return v;
+}
+
+// Roblox OAuth/OIDC (Roblox id_token is ES256; accept ES256)
 const RobloxProvider = {
   id: "roblox",
   name: "Roblox",
@@ -11,14 +16,15 @@ const RobloxProvider = {
   checks: ["pkce", "state"],
   authorization: {
     url: "https://apis.roblox.com/oauth/v1/authorize",
+    // IMPORTANT: Roblox needs openid+profile to get sub/userinfo
     params: { scope: "openid profile" },
   },
   token: "https://apis.roblox.com/oauth/v1/token",
   userinfo: "https://apis.roblox.com/oauth/v1/userinfo",
-  clientId: process.env.ROBLOX_CLIENT_ID,
-  clientSecret: process.env.ROBLOX_CLIENT_SECRET,
+  clientId: env("ROBLOX_CLIENT_ID"),
+  clientSecret: env("ROBLOX_CLIENT_SECRET"),
 
-  // ✅ THIS LINE FIXES YOUR ERROR:
+  // ES256 accept
   client: {
     id_token_signed_response_alg: "ES256",
   },
@@ -33,15 +39,15 @@ const RobloxProvider = {
 };
 
 export const authOptions = {
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: env("NEXTAUTH_SECRET"),
 
   adapter: PrismaAdapter(prisma),
   session: { strategy: "database" },
 
   providers: [
     DiscordProvider({
-      clientId: process.env.DISCORD_CLIENT_ID,
-      clientSecret: process.env.DISCORD_CLIENT_SECRET,
+      clientId: env("DISCORD_CLIENT_ID"),
+      clientSecret: env("DISCORD_CLIENT_SECRET"),
       authorization: { params: { scope: "identify" } },
     }),
     RobloxProvider,
