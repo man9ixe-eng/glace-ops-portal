@@ -1,10 +1,20 @@
 ﻿import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getPublicBaseUrl } from "@/lib/publicUrl";
 
 export const dynamic = "force-dynamic";
+
+async function getAuthSession(req, base) {
+  const cookie = req.headers.get("cookie") || "";
+  const r = await fetch(`${base}/api/auth/session`, {
+    headers: { cookie },
+    cache: "no-store",
+  });
+  if (!r.ok) return null;
+  const data = await r.json().catch(() => null);
+  if (!data?.user?.id) return null;
+  return data;
+}
 
 export async function GET(req) {
   const base = getPublicBaseUrl(req);
@@ -17,9 +27,8 @@ export async function GET(req) {
   const verifier = req.cookies.get("gh_rbx_verifier")?.value || null;
   const cb = req.cookies.get("gh_rbx_cb")?.value || "/sign-in";
 
-  // Must be signed in via Discord session to link Roblox to that user
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
+  const session = await getAuthSession(req, base);
+  if (!session) {
     return NextResponse.redirect(`${base}/sign-in?callbackUrl=${encodeURIComponent(cb)}`, 307);
   }
 
@@ -35,7 +44,6 @@ export async function GET(req) {
 
   const redirectUri = `${base}/api/roblox/link/callback`;
 
-  // Exchange code -> token
   const tokenRes = await fetch("https://apis.roblox.com/oauth/v1/token", {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
@@ -50,14 +58,12 @@ export async function GET(req) {
   });
 
   if (!tokenRes.ok) {
-    const t = await tokenRes.text().catch(() => "");
     return NextResponse.redirect(`${base}/sign-in?error=RobloxTokenExchange`, 307);
   }
 
   const tokenJson = await tokenRes.json();
   const accessToken = tokenJson.access_token;
 
-  // Fetch userinfo
   const uiRes = await fetch("https://apis.roblox.com/oauth/v1/userinfo", {
     headers: { authorization: `Bearer ${accessToken}` },
   });
@@ -74,39 +80,9 @@ export async function GET(req) {
     return NextResponse.redirect(`${base}/sign-in?error=RobloxNoSub`, 307);
   }
 
-  // Find current userId from DB session strategy
-  // NextAuth Prisma adapter stores user id; session.user may not include it by default.
-  // We can look it up via Session token cookie:
-  // But easiest: use prisma.session -> userId
-const sessionToken =
-  req.cookies.get("__Secure-next-auth.session-token")?.value ||
-  req.cookies.get("next-auth.session-token")?.value ||
-  req.cookies.get("__Secure-authjs.session-token")?.value ||
-  req.cookies.get("authjs.session-token")?.value ||
-  null;
+  const userId = session.user.id;
 
-  if (!sessionToken) {
-    return NextResponse.redirect(`${base}/sign-in?error=NoSessionToken`, 307);
-  }
-
-  const dbSession = await prisma.session.findUnique({
-    where: { sessionToken },
-    select: { userId: true },
-  });
-
-  if (!dbSession?.userId) {
-    return NextResponse.redirect(`${base}/sign-in?error=SessionNotFound`, 307);
-  }
-
-  const userId = dbSession.userId;
-
-  // If this user already linked a Roblox account, replace it
-  await prisma.account.deleteMany({
-    where: { userId, provider: "roblox" },
-  });
-
-  // Create/attach Roblox account
-  // If Roblox account is already linked to some OTHER user, block
+  // If Roblox account is already linked to someone else, block
   const existing = await prisma.account.findUnique({
     where: {
       provider_providerAccountId: {
@@ -120,6 +96,11 @@ const sessionToken =
   if (existing?.userId && existing.userId !== userId) {
     return NextResponse.redirect(`${base}/sign-in?error=RobloxAlreadyLinked`, 307);
   }
+
+  // Replace current user's roblox link if any
+  await prisma.account.deleteMany({
+    where: { userId, provider: "roblox" },
+  });
 
   await prisma.account.upsert({
     where: {
@@ -149,7 +130,6 @@ const sessionToken =
     },
   });
 
-  // Optional: store name on User if blank
   if (robloxName) {
     await prisma.user.update({
       where: { id: userId },
@@ -157,7 +137,6 @@ const sessionToken =
     }).catch(() => {});
   }
 
-  // Clear temp cookies
   const res = NextResponse.redirect(`${base}${cb}`, 307);
   res.cookies.set("gh_rbx_state", "", { path: "/", maxAge: 0 });
   res.cookies.set("gh_rbx_verifier", "", { path: "/", maxAge: 0 });

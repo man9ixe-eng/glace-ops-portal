@@ -28,6 +28,11 @@ export const authOptions = {
 
   callbacks: {
     async session({ session, user }) {
+      // ✅ Always expose DB user id
+      session.user = session.user || {};
+      session.user.id = user?.id || null;
+
+      // ✅ Also expose linked providers (your UI uses these)
       const accounts = await prisma.account.findMany({
         where: { userId: user.id },
         select: { provider: true, providerAccountId: true },
@@ -36,7 +41,6 @@ export const authOptions = {
       const discord = accounts.find(a => a.provider === "discord");
       const roblox = accounts.find(a => a.provider === "roblox");
 
-      session.user = session.user || {};
       session.user.discordId = discord?.providerAccountId || null;
       session.user.robloxUserId = roblox?.providerAccountId || null;
 
