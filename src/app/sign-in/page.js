@@ -1,8 +1,8 @@
-export const dynamic = "force-dynamic";
-
-import { getServerSession } from "next-auth";
+﻿import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import SignInClient from "./SignInClient";
+
+export const dynamic = "force-dynamic";
 
 export default async function SignInPage() {
   const session = await getServerSession(authOptions);
@@ -10,10 +10,5 @@ export default async function SignInPage() {
   const discordLinked = Boolean(session?.user?.discordId);
   const robloxLinked = Boolean(session?.user?.robloxUserId);
 
-  return (
-    <SignInClient
-      discordLinked={discordLinked}
-      robloxLinked={robloxLinked}
-    />
-  );
+  return <SignInClient discordLinked={discordLinked} robloxLinked={robloxLinked} />;
 }
