@@ -78,10 +78,12 @@ export async function GET(req) {
   // NextAuth Prisma adapter stores user id; session.user may not include it by default.
   // We can look it up via Session token cookie:
   // But easiest: use prisma.session -> userId
-  const sessionToken =
-    req.cookies.get("next-auth.session-token")?.value ||
-    req.cookies.get("__Secure-next-auth.session-token")?.value ||
-    null;
+const sessionToken =
+  req.cookies.get("__Secure-next-auth.session-token")?.value ||
+  req.cookies.get("next-auth.session-token")?.value ||
+  req.cookies.get("__Secure-authjs.session-token")?.value ||
+  req.cookies.get("authjs.session-token")?.value ||
+  null;
 
   if (!sessionToken) {
     return NextResponse.redirect(`${base}/sign-in?error=NoSessionToken`, 307);

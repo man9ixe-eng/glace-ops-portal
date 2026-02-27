@@ -17,18 +17,24 @@ function sha256(input) {
   return crypto.createHash("sha256").update(input).digest();
 }
 
+function getSessionToken(req) {
+  return (
+    req.cookies.get("__Secure-next-auth.session-token")?.value ||
+    req.cookies.get("next-auth.session-token")?.value ||
+    req.cookies.get("__Secure-authjs.session-token")?.value ||
+    req.cookies.get("authjs.session-token")?.value ||
+    null
+  );
+}
+
 export async function GET(req) {
   const base = getPublicBaseUrl(req);
   const url = new URL(req.url);
   const callbackUrl = url.searchParams.get("callbackUrl") || "/sign-in";
 
-  // ✅ RELIABLE auth check for App Router route handlers:
-  // Check DB session token cookie instead of getServerSession()
-  const sessionToken =
-    req.cookies.get("next-auth.session-token")?.value ||
-    req.cookies.get("__Secure-next-auth.session-token")?.value ||
-    null;
+  const sessionToken = getSessionToken(req);
 
+  // must be signed in (Discord) before linking Roblox
   if (!sessionToken) {
     return NextResponse.redirect(`${base}/sign-in?callbackUrl=${encodeURIComponent(callbackUrl)}`, 307);
   }
@@ -53,7 +59,6 @@ export async function GET(req) {
 
   // State
   const state = b64url(crypto.randomBytes(24));
-
   const redirectUri = `${base}/api/roblox/link/callback`;
 
   const auth = new URL("https://apis.roblox.com/oauth/v1/authorize");
@@ -61,7 +66,7 @@ export async function GET(req) {
   auth.searchParams.set("response_type", "code");
   auth.searchParams.set("redirect_uri", redirectUri);
 
-  // ✅ Roblox scopes (NOT profile:read)
+  // Roblox rejects profile:read; use openid + profile
   auth.searchParams.set("scope", "openid profile");
 
   auth.searchParams.set("state", state);
@@ -70,7 +75,7 @@ export async function GET(req) {
 
   const res = NextResponse.redirect(auth.toString(), 307);
 
-  // store verifier/state/callbackUrl in cookies
+  // temp cookies
   res.cookies.set("gh_rbx_state", state, {
     httpOnly: true,
     secure: true,
