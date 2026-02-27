@@ -2,10 +2,9 @@ import DiscordProvider from "next-auth/providers/discord";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 
-// --- Roblox Provider ---
-// If your Roblox OAuth is currently working, keep your working config.
-// This is a generic OAuth config that uses Roblox /userinfo.
-// NOTE: If you later re-hit id_token errors, we can harden it further.
+// Roblox OAuth
+// IMPORTANT: Roblox basic identity scopes are "openid profile" (NOT profile:read).
+// If your Roblox app category/policy blocks some scopes, fix it in Roblox Creator Dashboard.
 const RobloxProvider = {
   id: "roblox",
   name: "Roblox",
@@ -13,7 +12,7 @@ const RobloxProvider = {
   checks: ["pkce", "state"],
   authorization: {
     url: "https://apis.roblox.com/oauth/v1/authorize",
-    params: { scope: "profile" },
+    params: { scope: "openid profile" },
   },
   token: "https://apis.roblox.com/oauth/v1/token",
   userinfo: "https://apis.roblox.com/oauth/v1/userinfo",
@@ -30,28 +29,26 @@ const RobloxProvider = {
 };
 
 export const authOptions = {
-  // REQUIRED for production
   secret: process.env.NEXTAUTH_SECRET,
 
-  // âœ… THIS IS THE KEY: adapter enables account linking + DB sessions
+  // ✅ Makes provider linking persistent
   adapter: PrismaAdapter(prisma),
 
-  // Use database sessions so linking persists cleanly
+  // ✅ Use DB sessions (recommended when using adapter)
   session: { strategy: "database" },
 
   providers: [
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID,
       clientSecret: process.env.DISCORD_CLIENT_SECRET,
-      authorization: { params: { scope: "profile" } },
+      authorization: { params: { scope: "identify" } },
     }),
     RobloxProvider,
   ],
 
   callbacks: {
     async session({ session, user }) {
-      // Add linked IDs into session by checking linked accounts
-      // (so your /sign-in page can show "Discord linked" + "Roblox linked")
+      // expose linked ids to UI
       const accounts = await prisma.account.findMany({
         where: { userId: user.id },
         select: { provider: true, providerAccountId: true },
